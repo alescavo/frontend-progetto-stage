@@ -4,7 +4,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY . .
-RUN vite build
+RUN npm run build
 
 # Stage 2: Servizio con Nginx e configurazione personalizzata
 FROM nginx:1.25-alpine
