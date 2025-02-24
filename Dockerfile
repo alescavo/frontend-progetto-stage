@@ -15,6 +15,9 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # 4. Copia configurazione Nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
+RUN echo "client_body_temp_path /tmp/client_temp;" >> /etc/nginx/conf.d/default.conf && \
+    echo "proxy_temp_path /tmp/proxy_temp;" >> /etc/nginx/conf.d/default.conf
+
 # 5. Imposta permessi cartella contenuti statici
 RUN chown -R nginx:nginx /usr/share/nginx/html
 
