@@ -1,21 +1,28 @@
-FROM node:18-alpine AS builder
-WORKDIR /app
-COPY package*.json .
-RUN npm install
-COPY . .
-RUN npm run build
-
+# Stage 2: Servizio con Nginx e configurazione personalizzata
 FROM nginx:1.25-alpine
 
-# Copia i file con struttura corretta
+# 1. Crea directory necessarie e imposta permessi PRIMA di cambiare utente
+RUN mkdir -p /var/cache/nginx/client_temp && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chmod -R 755 /var/cache/nginx
+
+# 2. Rimuove i file di default
+RUN rm -rf /usr/share/nginx/html/*
+
+# 3. Copia contenuti statici
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Configurazione Nginx ottimizzata per asset statici
+# 4. Copia configurazione Nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Fix permessi specifico per CSS/asset
-RUN chmod -R a+r /usr/share/nginx/html && \
-    find /usr/share/nginx/html -type d -exec chmod a+rx {} \;
+# 5. Imposta permessi cartella contenuti statici
+RUN chown -R nginx:nginx /usr/share/nginx/html
 
-EXPOSE 8080
+# 6. Cambio utente (deve essere l'ultima operazione prima del CMD)
+USER nginx
+
+# 7. Healthcheck e avvio
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost/ || exit 1
+EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
