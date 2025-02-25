@@ -10,24 +10,20 @@ RUN npm run build
 # Fase di produzione
 FROM nginx:1.25-alpine
 
-# Crea directory necessarie con permessi corretti
-RUN mkdir -p /var/cache/nginx/client_temp && \
-    mkdir -p /var/run && \
-    chmod -R g+rwx /var/cache/nginx && \
-    chmod -R g+rwx /var/run && \
-    chmod -R g+rwx /etc/nginx && \
-    chown -R nginx:root /usr/share/nginx/html
+# Copia i file generati dalla fase di build
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Configurazione Nginx personalizzata
+# Configurazione Nginx personalizzata per React Router e OpenShift
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY nginx-cache.conf /etc/nginx/nginx.conf
 
-# Copia i file buildati
-COPY --from=builder --chown=nginx:root /app/dist /usr/share/nginx/html
+# Fix permessi per OpenShift (Random UID)
+RUN chmod -R g+rwX,o+rwX /usr/share/nginx/html && \
+    chmod -R g+rwX /var/cache/nginx && \
+    chmod -R g+rwX /etc/nginx/ && \
+    chmod -R g+rwX /var/run
 
-# Esponi la porta 8080
+# Esponi la porta 8080 (richiesto da OpenShift)
 EXPOSE 8080
 
-# Avvia Nginx come utente non-root
-USER nginx
+# Avvia Nginx
 CMD ["nginx", "-g", "daemon off;"]
