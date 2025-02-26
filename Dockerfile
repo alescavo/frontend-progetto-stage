@@ -7,25 +7,26 @@ COPY . .
 RUN npm run build
 
 # Fase di produzione
-FROM nginx:alpine
+FROM nginx:1.25-alpine
 
-# Crea directory necessarie con permessi corretti
-RUN mkdir -p /var/cache/nginx/client_temp && \
+# Crea tutte le directory necessarie con permessi corretti
+RUN mkdir -p /var/cache/nginx/client_temp /var/cache/nginx/proxy_temp && \
     chmod -R 755 /var/cache/nginx && \
-    chown -R nginx:nginx /var/cache/nginx
+    chown -R nginx:root /var/cache/nginx
 
-# Rimuove la direttiva 'user' dalla configurazione base
-RUN sed -i '/user  nginx;/d' /etc/nginx/nginx.conf
+# Rimuove la configurazione di default
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Copia la configurazione personalizzata
+COPY nginx.conf /etc/nginx/conf.d/
 
 # Copia i file buildati
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder --chown=nginx:root /app/dist /usr/share/nginx/html
 
-# Configurazione Nginx ottimizzata per OpenShift
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Fix permessi finali per OpenShift
-RUN chmod -R 755 /usr/share/nginx/html && \
-    chown -R nginx:nginx /usr/share/nginx/html
+# Imposta permessi finali
+RUN chmod -R 755 /usr/share/nginx/html
 
 EXPOSE 8080
+
+# Avvia Nginx senza user directive
 CMD ["nginx", "-g", "daemon off;"]
